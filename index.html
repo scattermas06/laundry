@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Laundry - Sistem Manajemen</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Space Mono', 'monospace'],
+                    },
+                    colors: {
+                        space: {
+                            900: '#0a0a1a', // Sangat gelap (Background utama)
+                            800: '#13132b', // Gelap (Kartu/Sidebar)
+                            700: '#1e1e40', // Hover
+                        },
+                        neon: {
+                            blue: '#00f3ff',
+                            purple: '#9d00ff',
+                        }
+                    },
+                    boxShadow: {
+                        'neon-blue': '0 0 10px rgba(0, 243, 255, 0.5), 0 0 20px rgba(0, 243, 255, 0.3)',
+                        'neon-purple': '0 0 10px rgba(157, 0, 255, 0.5), 0 0 20px rgba(157, 0, 255, 0.3)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0a0a1a;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Latar Belakang Bintang Bergerak Sederhana */
+        .stars-bg {
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 50px 160px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 130px 80px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 160px 120px, #ffffff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            animation: starsAnim 100s linear infinite;
+        }
+        @keyframes starsAnim {
+            0% { background-position: 0 0; }
+            100% { background-position: -1000px 1000px; }
+        }
+
+        /* Transisi SPA */
+        .view-section { display: none; opacity: 0; transition: opacity 0.3s ease; }
+        .view-section.active { display: flex; opacity: 1; animation: fadeIn 0.4s forwards; }
+        .view-section.active-block { display: block; opacity: 1; animation: fadeIn 0.4s forwards; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0a0a1a; }
+        ::-webkit-scrollbar-thumb { background: #1e1e40; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9d00ff; }
+
+        /* Khusus Struk Cetak (Media Print) */
+        @media print {
+            body { 
+                background: white !important; 
+                color: black !important; 
+                margin: 0; 
+                padding: 0;
+            }
+            .stars-bg { background-image: none !important; }
+            .no-print { display: none !important; }
+            
+            /* Tampilkan area nota saja */
+            #print-area-wrapper {
+                display: block !important;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            /* Styling nota seperti struk thermal */
+            .thermal-receipt {
+                width: 80mm; /* Lebar standar struk kasir */
+                max-width: 100%;
+                margin: 0 auto;
+                background: white;
+                color: black;
+                font-family: 'Space Mono', monospace, 'Courier New';
+                font-size: 12px;
+                padding: 10px;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            .thermal-receipt h1 { font-size: 16px; margin-bottom: 2px; }
+            .thermal-receipt p, .thermal-receipt td, .thermal-receipt th { font-size: 11px; }
+            .thermal-receipt .border-dashed { border-color: #000 !important; }
+        }
+    </style>
+</head>
+<body class="h-screen w-screen stars-bg">
+
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 no-print"></div>
+
+    <!-- ================= VIEW: LANDING PAGE ================= -->
+    <div id="view-landing" class="view-section active flex-col items-center justify-center min-h-screen relative no-print">
+        <div class="absolute w-96 h-96 bg-neon-purple rounded-full blur-[150px] opacity-20 pointer-events-none"></div>
+        
+        <div class="z-10 text-center px-6 max-w-3xl">
+            <div class="inline-block mb-4 p-4 rounded-full bg-space-800 shadow-neon-blue border border-space-700">
+                <i class="fas fa-rocket text-5xl text-neon-blue"></i>
+            </div>
+            <h1 class="text-5xl md:text-7xl font-bold mb-4 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-neon-blue to-neon-purple">
+                Space Laundry
+            </h1>
+            <p class="text-xl text-gray-300 mb-10">
+                Layanan laundry dengan teknologi luar angkasa. Cepat, bersih, dan futuristik.
+            </p>
+            <button onclick="navigate('login')" class="px-8 py-3 bg-transparent border-2 border-neon-blue text-neon-blue font-bold rounded-full hover:bg-neon-blue hover:text-space-900 hover:shadow-neon-blue transition-all duration-300 group">
+                Login Karyawan 
+                <i class="fas fa-sign-in-alt ml-2 group-hover:translate-x-1 transition-transform"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= VIEW: LOGIN PAGE ================= -->
+    <div id="view-login" class="view-section flex-col items-center justify-center min-h-screen px-4 no-print relative">
+        <div class="absolute w-72 h-72 bg-neon-blue rounded-full blur-[120px] opacity-20 pointer-events-none"></div>
+        
+        <div class="bg-space-800 p-8 rounded-2xl w-full max-w-md shadow-neon-purple border border-space-700 z-10 backdrop-blur-md bg-opacity-80">
+            <div class="text-center mb-6">
+                <i class="fas fa-user-astronaut text-4xl text-neon-purple mb-3"></i>
+                <h2 class="text-2xl font-bold text-white">Otorisasi Sistem</h2>
+                <p class="text-gray-400 text-sm mt-1">Masukkan kredensial Anda</p>
+            </div>
+            
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="mb-4">
+                    <label class="block text-gray-400 text-sm font-semibold mb-2">Username</label>
+                    <div class="relative">
+                        <i class="fas fa-user absolute left-4 top-3.5 text-gray-500"></i>
+                        <input type="text" id="username" class="w-full bg-space-900 border border-space-700 text-white rounded-lg pl-11 pr-4 py-3 focus:outline-none focus:border-neon-purple focus:ring-1 focus:ring-neon-purple transition-all" placeholder="Masukkan username">
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="block text-gray-400 text-sm font-semibold mb-2">Password</label>
+                    <div class="relative">
+                        <i class="fas fa-lock absolute left-4 top-3.5 text-gray-500"></i>
+                        <input type="password" id="password" class="w-full bg-space-900 border border-space-700 text-white rounded-lg pl-11 pr-4 py-3 focus:outline-none focus:border-neon-purple focus:ring-1 focus:ring-neon-purple transition-all" placeholder="••••••••">
+                    </div>
+                </div>
+                <!-- Tempat Pesan Error Login -->
+                <p id="login-error" class="text-red-500 text-sm mb-4 hidden font-medium text-center bg-red-500/10 py-2 rounded-lg border border-red-500/20"></p>
+                
+                <button type="submit" class="w-full bg-gradient-to-r from-neon-purple to-neon-blue text-white font-bold py-3 px-4 rounded-lg shadow-neon-blue hover:opacity-90 transition-all transform hover:scale-[1.02] mt-2">
+                    Masuk
+                </button>
+            </form>
+            <div class="text-center mt-6">
+                <button onclick="navigate('landing')" class="text-gray-500 hover:text-neon-blue text-sm transition-colors">
+                    <i class="fas fa-arrow-left mr-1"></i> Kembali ke Pusat
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= VIEW: APP / DASHBOARD ================= -->
+    <div id="view-app" class="view-section hidden h-screen w-full bg-space-900 bg-opacity-95">
+        
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="w-64 bg-space-800 border-r border-space-700 flex flex-col flex-shrink-0 transition-transform duration-300 absolute md:relative z-40 h-full -translate-x-full md:translate-x-0 no-print">
+            <div class="p-6 border-b border-space-700 flex items-center justify-between">
+                <div class="flex items-center gap-2 font-bold text-xl text-white">
+                    <i class="fas fa-rocket text-neon-blue"></i>
+                    <span>SpaceLaundry</span>
+                </div>
+                <button class="md:hidden text-gray-400 hover:text-white" onclick="toggleSidebar()">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-2">
+                <button onclick="navigateMenu('dashboard')" id="nav-dashboard" class="nav-menu-btn w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg text-white bg-space-700 shadow-neon-blue/20 transition-all">
+                    <i class="fas fa-home w-5 text-center text-neon-blue"></i>
+                    <span class="font-medium">Dashboard</span>
+                </button>
+                <button onclick="navigateMenu('order')" id="nav-order" class="nav-menu-btn w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg text-gray-400 hover:bg-space-700 hover:text-white transition-all">
+                    <i class="fas fa-plus-circle w-5 text-center text-neon-purple"></i>
+                    <span class="font-medium">Buat Order</span>
+                </button>
+                <button onclick="navigateMenu('checkout')" id="nav-checkout" class="nav-menu-btn w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg text-gray-400 hover:bg-space-700 hover:text-white transition-all">
+                    <i class="fas fa-receipt w-5 text-center text-neon-blue"></i>
+                    <span class="font-medium">Checkout & Print</span>
+                </button>
+            </nav>
+            
+            <div class="p-4 border-t border-space-700">
+                <button onclick="handleLogout()" class="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-lg transition-colors">
+                    <i class="fas fa-sign-out-alt w-5 text-center"></i>
+                    <span class="font-medium">Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Overlay untuk Mobile Sidebar -->
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-30 hidden md:hidden no-print"></div>
+
+        <!-- Area Konten Utama -->
+        <main class="flex-1 flex flex-col h-full overflow-y-auto relative w-full">
+            
+            <!-- Header Mobile -->
+            <header class="md:hidden bg-space-800 p-4 border-b border-space-700 flex items-center justify-between sticky top-0 z-20 no-print">
+                <div class="flex items-center gap-2 font-bold text-white">
+                    <i class="fas fa-rocket text-neon-blue"></i>
+                    <span>SpaceLaundry</span>
+                </div>
+                <button onclick="toggleSidebar()" class="text-white p-2">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </header>
+
+            <div class="p-4 md:p-8 w-full max-w-6xl mx-auto flex-1 pb-20">
+                
+                <!-- ==== MENU: DASHBOARD ==== -->
+                <div id="menu-dashboard" class="app-menu block no-print">
+                    <div class="mb-8">
+                        <h2 class="text-3xl font-bold text-white mb-2">Selamat datang, Marta Edi</h2>
+                        <p class="text-gray-400">Ringkasan operasional stasiun laundry hari ini.</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <!-- Kartu Statistik 1 -->
+                        <div class="bg-space-800 p-6 rounded-2xl border border-space-700 relative overflow-hidden group">
+                            <div class="absolute -right-4 -top-4 w-24 h-24 bg-neon-blue/10 rounded-full blur-xl"></div>
+                            <div class="relative z-10 flex items-center gap-4">
+                                <div class="w-14 h-14 rounded-full bg-space-900 border border-neon-blue flex items-center justify-center text-neon-blue text-2xl">
+                                    <i class="fas fa-box-open"></i>
+                                </div>
+                                <div>
+                                    <p class="text-gray-400 text-sm font-medium">Pesanan Aktif</p>
+                                    <h3 class="text-3xl font-bold text-white" id="stat-active-orders">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Kartu Statistik 2 -->
+                        <div class="bg-space-800 p-6 rounded-2xl border border-space-700 relative overflow-hidden group">
+                            <div class="absolute -right-4 -top-4 w-24 h-24 bg-neon-purple/10 rounded-full blur-xl"></div>
+                            <div class="relative z-10 flex items-center gap-4">
+                                <div class="w-14 h-14 rounded-full bg-space-900 border border-neon-purple flex items-center justify-center text-neon-purple text-2xl">
+                                    <i class="fas fa-wallet"></i>
+                                </div>
+                                <div>
+                                    <p class="text-gray-400 text-sm font-medium">Total Pendapatan Hari Ini</p>
+                                    <h3 class="text-3xl font-bold text-white" id="stat-total-revenue">Rp 0</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==== MENU: ORDER ==== -->
+                <div id="menu-order" class="app-menu hidden no-print">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold text-white mb-1">Buat Pesanan Baru</h2>
+                        <p class="text-gray-400 text-sm">Masukkan data pelanggan dan layanan yang dipilih.</p>
+                    </div>
+
+                    <div class="bg-space-800 rounded-2xl border border-space-700 shadow-xl p-6 md:p-8 max-w-3xl">
+                        <form id="orderForm" onsubmit="saveOrder(event)">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <label class="block text-gray-400 text-sm font-medium mb-2">Nama Pelanggan</label>
+                                    <input type="text" id="order-name" required class="w-full bg-space-900 border border-space-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-neon-blue transition-colors" placeholder="Cth: Budi Luar Angkasa">
+                                </div>
+                                <div>
+                                    <label class="block text-gray-400 text-sm font-medium mb-2">Nomor HP</label>
+                                    <input type="text" id="order-phone" required class="w-full bg-space-900 border border-space-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-neon-blue transition-colors" placeholder="0812xxxxxx">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-6">
+                                <label class="block text-gray-400 text-sm font-medium mb-2">Pilihan Layanan</label>
+                                <div class="relative">
+                                    <select id="order-service" required onchange="calculateTotal()" class="w-full bg-space-900 border border-space-700 text-white rounded-lg px-4 py-3 appearance-none focus:outline-none focus:border-neon-purple transition-colors">
+                                        <option value="" disabled selected>-- Pilih Layanan Laundry --</option>
+                                        <option value="Cuci Komplit" data-price="6000">Cuci Komplit (Rp 6.000/kg)</option>
+                                        <option value="Cuci Kering" data-price="4000">Cuci Kering (Rp 4.000/kg)</option>
+                                        <option value="Setrika" data-price="4500">Setrika Saja (Rp 4.500/kg)</option>
+                                    </select>
+                                    <i class="fas fa-chevron-down absolute right-4 top-4 text-gray-500 pointer-events-none"></i>
+                                </div>
+                            </div>
+
+                            <div class="mb-6">
+                                <label class="block text-gray-400 text-sm font-medium mb-2">Berat Pakaian (Kg)</label>
+                                <input type="number" id="order-weight" required min="0.1" step="0.1" oninput="calculateTotal()" class="w-full bg-space-900 border border-space-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-neon-blue transition-colors" placeholder="Cth: 2.5">
+                            </div>
+
+                            <div class="border-t border-space-700 pt-6 mb-6">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-300 text-lg">Total Harga Estimasi:</span>
+                                    <span id="order-total-display" class="text-3xl font-bold text-neon-blue">Rp 0</span>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full py-4 bg-gradient-to-r from-neon-blue to-neon-purple text-white font-bold rounded-lg shadow-neon-blue hover:opacity-90 transition-all transform hover:scale-[1.01] flex items-center justify-center gap-2">
+                                <i class="fas fa-save"></i> Simpan Pesanan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- ==== MENU: CHECKOUT & PRINT ==== -->
+                <div id="menu-checkout" class="app-menu hidden">
+                    
+                    <div class="no-print mb-6">
+                        <h2 class="text-2xl font-bold text-white mb-1">Daftar Pesanan & Checkout</h2>
+                        <p class="text-gray-400 text-sm">Lihat pesanan tersimpan dan cetak nota pembayaran.</p>
+                    </div>
+
+                    <!-- Area Tabel (Tidak Dicetak) -->
+                    <div class="bg-space-800 rounded-2xl border border-space-700 shadow-xl overflow-hidden no-print">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-space-900 border-b border-space-700 text-gray-400 text-sm">
+                                        <th class="p-4 font-semibold">Pelanggan</th>
+                                        <th class="p-4 font-semibold">Layanan</th>
+                                        <th class="p-4 font-semibold text-center">Berat</th>
+                                        <th class="p-4 font-semibold text-right">Total</th>
+                                        <th class="p-4 font-semibold text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="checkout-table-body" class="divide-y divide-space-700">
+                                    <!-- Diisi oleh JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pesan Kosong -->
+                        <div id="empty-state" class="p-12 text-center hidden">
+                            <i class="fas fa-space-shuttle text-5xl text-space-700 mb-4"></i>
+                            <p class="text-gray-500">Belum ada pesanan terdaftar di sistem.</p>
+                        </div>
+                    </div>
+
+                    <!-- AREA NOTA PEMBAYARAN (Ditampilkan di layar dan dicetak) -->
+                    <div id="print-area-wrapper" class="mt-8 hidden">
+                        <div class="flex justify-between items-center mb-4 no-print bg-space-800 p-4 rounded-lg border border-neon-blue">
+                            <h3 class="text-white font-bold"><i class="fas fa-file-invoice text-neon-blue mr-2"></i> Pratinjau Nota</h3>
+                            <button onclick="window.print()" class="px-4 py-2 bg-neon-blue text-space-900 font-bold rounded hover:bg-white transition-colors flex items-center gap-2">
+                                <i class="fas fa-print"></i> Cetak Nota
+                            </button>
+                        </div>
+
+                        <!-- Kertas Nota Thermal -->
+                        <div id="thermal-receipt" class="thermal-receipt rounded-lg p-6 bg-white mx-auto shadow-xl relative overflow-hidden">
+                            <!-- Tekstur kertas sobek simulasi (Hanya visual layar) -->
+                            <div class="absolute top-0 left-0 w-full h-2 bg-repeat-x opacity-20 no-print" style="background-image: radial-gradient(circle, transparent, transparent 4px, white 4px, white 6px); background-size: 10px 10px;"></div>
+                            
+                            <div class="text-center border-b-2 border-dashed border-gray-400 pb-3 mb-3">
+                                <h1 class="font-bold uppercase tracking-wider text-black text-xl mb-1">Space Laundry</h1>
+                                <p class="text-black/80 font-mono text-xs">Pusat Galaksi Sektor 9</p>
+                                <p class="text-black/80 font-mono text-xs">Telp: 0812-SPACE-XX</p>
+                            </div>
+
+                            <div class="text-xs text-black/90 mb-3 space-y-1">
+                                <div class="flex justify-between">
+                                    <span>Tgl:</span>
+                                    <span id="receipt-date"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>No. Nota:</span>
+                                    <span id="receipt-id"></span>
+                                </div>
+                                <div class="flex justify-between mt-2">
+                                    <span>Nama:</span>
+                                    <strong id="receipt-name"></strong>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>No. HP:</span>
+                                    <span id="receipt-phone"></span>
+                                </div>
+                            </div>
+
+                            <table class="w-full text-xs text-black mb-3 border-collapse">
+                                <thead>
+                                    <tr class="border-y border-dashed border-gray-400">
+                                        <th class="py-1 text-left">Item / Layan</th>
+                                        <th class="py-1 text-center">Qty</th>
+                                        <th class="py-1 text-right">Harga</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="py-2" id="receipt-service"></td>
+                                        <td class="py-2 text-center" id="receipt-weight"></td>
+                                        <td class="py-2 text-right" id="receipt-total"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div class="text-right text-sm font-bold text-black border-t border-dashed border-gray-400 pt-2 mb-4">
+                                TOTAL: <span id="receipt-grand-total"></span>
+                            </div>
+
+                            <div class="text-center text-xs text-black/80">
+                                <p>Terima Kasih!</p>
+                                <p class="mt-1">"Pakaian bersih melesat secepat cahaya"</p>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mt-4 no-print">
+                             <button onclick="closeReceipt()" class="text-gray-400 hover:text-white text-sm">
+                                <i class="fas fa-times"></i> Tutup Nota
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // State Management
+        let orders = [];
+        let currentTotalValue = 0;
+
+        // Utilitas Format Rupiah
+        const formatRupiah = (angka) => {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+        };
+
+        // Custom Toast Notification (Pengganti Alert)
+        const showToast = (message, type = 'success') => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgClass = type === 'error' ? 'bg-red-500/20 border-red-500 text-red-100 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-green-500/20 border-green-500 text-green-100 shadow-[0_0_15px_rgba(34,197,94,0.3)]';
+            let iconClass = type === 'error' ? 'fa-exclamation-triangle text-red-400' : 'fa-check-circle text-green-400';
+            
+            toast.className = `flex items-center gap-3 px-5 py-4 rounded-xl border backdrop-blur-md transform transition-all duration-300 translate-x-full opacity-0 ${bgClass}`;
+            toast.innerHTML = `<i class="fas ${iconClass} text-xl"></i> <span class="font-medium">${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            // Animasi masuk
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            });
+            
+            // Hapus otomatis setelah 3 detik
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        };
+
+        // Navigasi Utama SPA
+        const navigate = (targetId) => {
+            document.querySelectorAll('.view-section').forEach(el => {
+                el.classList.remove('active', 'active-block');
+                el.classList.add('hidden');
+            });
+            
+            const targetEl = document.getElementById(targetId === 'app' ? 'view-app' : `view-${targetId}`);
+            targetEl.classList.remove('hidden');
+            
+            if (targetId === 'app') {
+                targetEl.classList.add('active'); // pakai flex
+                navigateMenu('dashboard');
+            } else {
+                targetEl.classList.add('active'); // pakai flex
+            }
+        };
+
+        // Navigasi Menu Sidebar
+        const navigateMenu = (menuId) => {
+            // Sembunyikan semua menu
+            document.querySelectorAll('.app-menu').forEach(el => {
+                el.classList.remove('active-block');
+                el.classList.add('hidden');
+            });
+            
+            // Reset style tombol sidebar
+            document.querySelectorAll('.nav-menu-btn').forEach(btn => {
+                btn.classList.remove('bg-space-700', 'text-white', 'shadow-neon-blue/20');
+                btn.classList.add('text-gray-400');
+            });
+
+            // Tampilkan menu target
+            const targetMenu = document.getElementById(`menu-${menuId}`);
+            targetMenu.classList.remove('hidden');
+            targetMenu.classList.add('active-block');
+
+            // Beri style aktif pada tombol sidebar
+            const activeBtn = document.getElementById(`nav-${menuId}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('text-gray-400');
+                activeBtn.classList.add('bg-space-700', 'text-white', 'shadow-neon-blue/20');
+            }
+
+            // Tutup sidebar di mobile jika terbuka
+            if (window.innerWidth < 768) {
+                const sidebar = document.getElementById('sidebar');
+                if (!sidebar.classList.contains('-translate-x-full')) {
+                    toggleSidebar();
+                }
+            }
+            
+            // Jalankan fungsi khusus per menu
+            if(menuId === 'dashboard') updateDashboardStats();
+            if(menuId === 'checkout') renderCheckoutTable();
+            
+            // Selalu tutup area print jika pindah menu
+            closeReceipt();
+        };
+
+        const toggleSidebar = () => {
+            document.getElementById('sidebar').classList.toggle('-translate-x-full');
+            document.getElementById('sidebar-overlay').classList.toggle('hidden');
+        };
+
+        const handleLogin = (e) => {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            const errorEl = document.getElementById('login-error');
+
+            // Validasi Hardcode
+            if (user === 'martaedi' && pass === 'admin123') {
+                errorEl.classList.add('hidden');
+                document.getElementById('loginForm').reset();
+                showToast('Login berhasil! Menghubungkan ke server...');
+                setTimeout(() => navigate('app'), 800);
+            } else {
+                errorEl.textContent = 'Kredensial tidak valid. Akses ditolak.';
+                errorEl.classList.remove('hidden');
+            }
+        };
+
+        const handleLogout = () => {
+            showToast('Sistem diputus. Sampai jumpa.', 'success');
+            setTimeout(() => {
+                navigate('landing');
+            }, 800);
+        };
+
+        const updateDashboardStats = () => {
+            const activeCount = orders.length;
+            const totalRev = orders.reduce((sum, order) => sum + order.total, 0);
+            
+            document.getElementById('stat-active-orders').innerText = activeCount;
+            document.getElementById('stat-total-revenue').innerText = formatRupiah(totalRev);
+        };
+
+        const calculateTotal = () => {
+            const serviceSelect = document.getElementById('order-service');
+            const weightInput = document.getElementById('order-weight');
+            const totalDisplay = document.getElementById('order-total-display');
+
+            if (serviceSelect.value && weightInput.value) {
+                const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
+                const pricePerKg = parseFloat(selectedOption.getAttribute('data-price'));
+                const weight = parseFloat(weightInput.value);
+                
+                if(weight > 0) {
+                    currentTotalValue = pricePerKg * weight;
+                    totalDisplay.innerText = formatRupiah(currentTotalValue);
+                    return;
+                }
+            }
+            currentTotalValue = 0;
+            totalDisplay.innerText = 'Rp 0';
+        };
+
+        const saveOrder = (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('order-name').value;
+            const phone = document.getElementById('order-phone').value;
+            const serviceStr = document.getElementById('order-service').value;
+            const weight = parseFloat(document.getElementById('order-weight').value);
+            
+            if (!serviceStr || isNaN(weight) || weight <= 0) {
+                showToast('Pastikan layanan dan berat diisi dengan benar.', 'error');
+                return;
+            }
+
+            // Buat ID pesanan random
+            const orderId = 'SL-' + Math.floor(Math.random() * 90000 + 10000);
+            const date = new Date();
+            const dateStr = date.toLocaleDateString('id-ID') + ' ' + date.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
+
+            const newOrder = {
+                id: orderId,
+                date: dateStr,
+                name: name,
+                phone: phone,
+                service: serviceStr,
+                weight: weight,
+                total: currentTotalValue
+            };
+
+            orders.push(newOrder);
+            
+            // Reset Form
+            document.getElementById('orderForm').reset();
+            calculateTotal(); // reset display angka
+            
+            showToast('Pesanan berhasil disimpan ke database!');
+            updateDashboardStats();
+        };
+
+        const renderCheckoutTable = () => {
+            const tbody = document.getElementById('checkout-table-body');
+            const emptyState = document.getElementById('empty-state');
+            const tableContainer = tbody.parentElement.parentElement;
+
+            tbody.innerHTML = '';
+
+            if (orders.length === 0) {
+                emptyState.classList.remove('hidden');
+                tableContainer.classList.add('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                tableContainer.classList.remove('hidden');
+
+                orders.forEach(order => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-space-800 transition-colors border-b border-space-700/50";
+                    tr.innerHTML = `
+                        <td class="p-4">
+                            <div class="text-white font-medium">${order.name}</div>
+                            <div class="text-gray-500 text-xs">${order.phone}</div>
+                        </td>
+                        <td class="p-4 text-gray-300 text-sm">${order.service}</td>
+                        <td class="p-4 text-center text-neon-blue font-mono">${order.weight} Kg</td>
+                        <td class="p-4 text-right text-white font-medium">${formatRupiah(order.total)}</td>
+                        <td class="p-4 text-center">
+                            <button onclick="showReceipt('${order.id}')" class="px-3 py-1.5 bg-neon-purple/20 text-neon-purple border border-neon-purple/50 rounded hover:bg-neon-purple hover:text-white transition-all text-sm flex items-center justify-center gap-1 mx-auto">
+                                <i class="fas fa-receipt"></i> Lihat Nota
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        };
+
+        const showReceipt = (id) => {
+            const order = orders.find(o => o.id === id);
+            if(!order) return;
+
+            // Populate data nota
+            document.getElementById('receipt-date').innerText = order.date;
+            document.getElementById('receipt-id').innerText = order.id;
+            document.getElementById('receipt-name').innerText = order.name;
+            document.getElementById('receipt-phone').innerText = order.phone;
+            
+            document.getElementById('receipt-service').innerText = order.service;
+            document.getElementById('receipt-weight').innerText = `${order.weight} Kg`;
+            document.getElementById('receipt-total').innerText = order.total.toLocaleString('id-ID');
+            
+            document.getElementById('receipt-grand-total').innerText = formatRupiah(order.total);
+
+            // Tampilkan wrapper nota
+            const printWrapper = document.getElementById('print-area-wrapper');
+            printWrapper.classList.remove('hidden');
+            
+            // Gulir otomatis ke nota
+            printWrapper.scrollIntoView({ behavior: 'smooth' });
+        };
+
+        const closeReceipt = () => {
+            document.getElementById('print-area-wrapper').classList.add('hidden');
+        };
+
+    </script>
+</body>
+</html>
